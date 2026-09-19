@@ -494,8 +494,6 @@ MemMap* MemMap::MapFileAtAddress(uint8_t* expected_ptr,
   CHECK_NE(0, prot);
   CHECK_NE(0, flags & (MAP_SHARED | MAP_PRIVATE));
 
-  // Note that we do not allow MAP_FIXED unless reuse == true, i.e we
-  // expect his mapping to be contained within an existing map.
   if (reuse) {
     // reuse means it is okay that it overlaps an existing page mapping.
     // Only use this if you actually made the page reservation yourself.
@@ -504,6 +502,15 @@ MemMap* MemMap::MapFileAtAddress(uint8_t* expected_ptr,
     DCHECK(ContainedWithinExistingMap(expected_ptr, byte_count, error_msg))
         << ((error_msg != nullptr) ? *error_msg : std::string());
     flags |= MAP_FIXED;
+
+  #if !defined(ART_TARGET)
+  } else if (expected_ptr != nullptr) {
+  #ifndef MAP_FIXED_NOREPLACE
+  #define MAP_FIXED_NOREPLACE 0x100000
+  #endif
+    flags |= MAP_FIXED_NOREPLACE;
+  #endif
+
   } else {
     CHECK_EQ(0, flags & MAP_FIXED);
     // Don't bother checking for an overlapping region here. We'll
